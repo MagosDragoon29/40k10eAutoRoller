@@ -1,0 +1,29 @@
+{
+    "unit_name": "Kastelan Robots",
+    "movement": 8,
+    "toughness": 7,
+    "save": 3,
+    "wounds": 6,
+    "abilities": {
+      "protocols": "Choose a protocol at the start of the battle. It remains active for the rest of the game."
+    },
+    "weapons": [
+      {
+        "name": "Phosphor Blaster",
+        "range": 24,
+        "type": "Heavy 3",
+        "strength": 6,
+        "ap": -2,
+        "damage": 1
+      },
+      {
+        "name": "Power Fist",
+        "range": "Melee",
+        "type": "Melee",
+        "strength": 10,
+        "ap": -3,
+        "damage": 3
+      }
+    ]
+  }
+  
