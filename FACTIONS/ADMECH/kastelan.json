@@ -1,29 +1,108 @@
 {
     "unit_name": "Kastelan Robots",
-    "movement": 8,
-    "toughness": 7,
-    "save": 3,
-    "wounds": 6,
+    "keywords": ["Faction: Adeptus Mechanicus", "Imperium", "Kastelan Robots", "Legio Cybernetica", "Vehicle", "Walker"],
+    "movement": 6,
+    "toughness": 9,
+    "save": 2,
+    "invuln": 5,
+    "wounds": 7,
+    "leadership": 7,
+    "objective_control": 2,
     "abilities": {
       "protocols": "Choose a protocol at the start of the battle. It remains active for the rest of the game."
     },
     "weapons": [
       {
-        "name": "Phosphor Blaster",
-        "range": 24,
-        "type": "Heavy 3",
+        "name": "Incendine Combustor",
+        "attacks": "D6",
+        "skill": "N/A",
+        "range": 12,
+        "type": ["Ignores Cover", "Torrent"],
         "strength": 6,
-        "ap": -2,
+        "ap": -1,
         "damage": 1
       },
       {
-        "name": "Power Fist",
-        "range": "Melee",
-        "type": "Melee",
-        "strength": 10,
-        "ap": -3,
+        "name": "Twin Kastelan Fist",
+        "attacks": 4,
+        "skill": 4,
+        "range": 0,
+        "type": ["Twin-Linked"],
+        "strength": 12,
+        "ap": -2,
         "damage": 3
+      },
+      {
+        "name": "Kastelan Fist",
+        "attacks": 4,
+        "skill": 4,
+        "range": 0,
+        "type": null,
+        "strength": 12,
+        "ap": -2,
+        "damage": 3
+      },
+      {
+        "name": "Kastelan Phosphor Blaster",
+        "attacks": 3,
+        "skill": 4,
+        "range": 24,
+        "type": ["Ignores Cover"],
+        "strength": 6,
+        "ap": -1,
+        "damage": 1
+      },
+      {
+        "name": "Twin Kastelan Phosphor Blaster",
+        "attacks": 3,
+        "skill": 4,
+        "range": 24,
+        "type": ["Ignores Cover", "Twin-Linked"],
+        "strength": 6,
+        "ap": -1,
+        "damage": 1
+      },
+      {
+        "name": "Heavy Phosphor Blaster",
+        "attacks": 3,
+        "skill": 4,
+        "range": 36,
+        "type": ["Ignores Cover"],
+        "strength": 6,
+        "ap": -1,
+        "damage": 2
+      },
+      {
+        "name": "Close Combat Weapon",
+        "attacks": 3,
+        "skill": 4,
+        "range": 0,
+        "type": null,
+        "strength": 6,
+        "ap": 0,
+        "damage": 1
+      }
+    ],
+    "loadouts": [
+      {
+        "name": "Default Configuration",
+        "description": "Each model equipped with an Incendine Combustor and Twin Kastelan Fist.",
+        "weapons": ["Incendine Combustor", "Twin Kastelan Fist"]
+      },
+      {
+        "name": "Single Phosphor Blaster",
+        "description": "Replace Twin Kastelan Fist with Kastelan Phosphor Blaster and Kastelan Fist.",
+        "weapons": ["Incendine Combustor", "Kastelan Phosphor Blaster", "Kastelan Fist"]
+      },
+      {
+        "name": "Twin Phosphor Blaster",
+        "description": "Replace Twin Kastelan Fist with Twin Kastelan Phosphor Blaster and Close Combat Weapon.",
+        "weapons": ["Incendine Combustor", "Twin Kastelan Phosphor Blaster", "Close Combat Weapon"]
+      },
+      {
+        "name": "Heavy Phosphor Upgrade",
+        "description": "Replace Incendine Combustor with Heavy Phosphor Blaster.",
+        "weapons": ["Heavy Phosphor Blaster", "Twin Kastelan Fist"]
       }
     ]
   }
-  
