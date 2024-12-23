@@ -11,7 +11,7 @@ class Faction:
         self.name = name
         self.units = []
 
-    def add_units(self, unit):
+    def add_unit(self, unit):
         self.units.append(unit)
 
     def list_units(self):
@@ -24,8 +24,8 @@ class Faction:
         raise ValueError(f"unit '{unit_name}' not found in faction '{self.name}")
     
 class Unit:
-    def __init__(self, name, keywords, movement, toughness, save, invuln, wounds, leadership, objective_control, abilities, weapons, loadouts, default_squad):
-        self.name = name
+    def __init__(self, unit_name, keywords, movement, toughness, save, invuln, wounds, leadership, objective_control, abilities, weapons, loadouts, default_squad):
+        self.name = unit_name
         self.keywords = keywords
         self.movement = movement
         self.toughness = toughness
@@ -105,34 +105,28 @@ def load_factions(folder_path):
 def build_squad(size, default_loadout):
     return [{"model_id": i, "loadout": default_loadout} for i in range(1, size+1)]
 
-def update_loadout(squad, model_id, selected_loadout):
-    for model in squad:
-        if model["model_id"] == model_id:
-            model["loadout"] = selected_loadout
-
-def update_squad_size(event, squad, squad_size_var, unit_data):
-    selected_size = int(squad_size_var.get())
+def rebuild_squad(squad, size, default_loadout, frames, root, unit, alignment, column):
     squad.clear()
-    squad.extend(build_squad(selected_size, unit_data["default_squad"]["loadout"]))
-    update_model_louadouts()
+    squad.extend(build_squad(size, default_loadout))
+    update_model_loadouts(squad, frames, root, unit, alignment=alignment, column=column)
 
-def update_model_loadouts():
-    for widget in model_frames:
+def update_model_loadouts(squad, frames, root, unit, alignment="left", column=0):
+    for widget in frames:
         widget.destroy()
-    model_frames.clear()
+    frames.clear()
 
-    for model in squad:
-        frame = ttk.Frame(root, padding="10")
-        frame.pack(fill="x", pady=5)
-        model_frames.append(frame)
+    for row, model in enumerate(squad):
+        frame = ttk.Frame(root, padding="5")
+        frame.grid(row=row + 1, column=column, sticky="ew", pady=2)
+        frames.append(frame)
         
         label = ttk.Label(frame, text=f"Model {model['model_id']}:")
-        label.pack(side="left")
+        label.grid(row=0, column=0, sticky=alignment)
 
         selected_loadout = tk.StringVar(value=model["loadout"])
         dropdown = ttk.Combobox(frame, textvariable=selected_loadout, state="readonly")
-        dropdown["values"] = [loadout["name"] for loadout in unit_data["loadouts"]]
-        dropdown.pack(side="left", padx=10)
+        dropdown["values"] = [loadout.name for loadout in unit.loadouts]
+        dropdown.grid(row=0, column=1, padx=10)
 
         def set_model_loadout(event, model_id=model["model_id"], var=selected_loadout):
             for m in squad:
@@ -141,3 +135,12 @@ def update_model_loadouts():
                     print(f"Model {model_id} loadout updated to: {var.get()}")
 
         dropdown.bind("<<ComboboxSelected>>", set_model_loadout)
+
+def update_squad_size(squad_var, delta, max_size):
+    new_size = int(squad_var.get()) + delta
+    new_size = max(1, min(new_size, max_size))
+    squad_var.set(new_size)
+    return new_size
+
+
+

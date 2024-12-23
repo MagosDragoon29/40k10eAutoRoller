@@ -16,8 +16,8 @@
         "name": "Incendine Combustor",
         "attacks": "D6",
         "skill": "N/A",
-        "range": 12,
-        "type": ["Ignores Cover", "Torrent"],
+        "range_": 12,
+        "type_": ["Ignores Cover", "Torrent"],
         "strength": 6,
         "ap": -1,
         "damage": 1
@@ -26,8 +26,8 @@
         "name": "Twin Kastelan Fist",
         "attacks": 4,
         "skill": 4,
-        "range": 0,
-        "type": ["Twin-Linked"],
+        "range_": 0,
+        "type_": ["Twin-Linked"],
         "strength": 12,
         "ap": -2,
         "damage": 3
@@ -36,8 +36,8 @@
         "name": "Kastelan Fist",
         "attacks": 4,
         "skill": 4,
-        "range": 0,
-        "type": null,
+        "range_": 0,
+        "type_": null,
         "strength": 12,
         "ap": -2,
         "damage": 3
@@ -46,8 +46,8 @@
         "name": "Kastelan Phosphor Blaster",
         "attacks": 3,
         "skill": 4,
-        "range": 24,
-        "type": ["Ignores Cover"],
+        "range_": 24,
+        "type_": ["Ignores Cover"],
         "strength": 6,
         "ap": -1,
         "damage": 1
@@ -56,8 +56,8 @@
         "name": "Twin Kastelan Phosphor Blaster",
         "attacks": 3,
         "skill": 4,
-        "range": 24,
-        "type": ["Ignores Cover", "Twin-Linked"],
+        "range_": 24,
+        "type_": ["Ignores Cover", "Twin-Linked"],
         "strength": 6,
         "ap": -1,
         "damage": 1
@@ -66,8 +66,8 @@
         "name": "Heavy Phosphor Blaster",
         "attacks": 3,
         "skill": 4,
-        "range": 36,
-        "type": ["Ignores Cover"],
+        "range_": 36,
+        "type_": ["Ignores Cover"],
         "strength": 6,
         "ap": -1,
         "damage": 2
@@ -76,8 +76,8 @@
         "name": "Close Combat Weapon",
         "attacks": 3,
         "skill": 4,
-        "range": 0,
-        "type": null,
+        "range_": 0,
+        "type_": null,
         "strength": 6,
         "ap": 0,
         "damage": 1
@@ -104,5 +104,10 @@
         "description": "Replace Incendine Combustor with Heavy Phosphor Blaster.",
         "weapons": ["Heavy Phosphor Blaster", "Twin Kastelan Fist"]
       }
-    ]
+    ],
+    "default_squad": {
+      "models": 2,
+      "loadout": "Default Configuration",
+      "sizes":[2,4]
+    }
   }
