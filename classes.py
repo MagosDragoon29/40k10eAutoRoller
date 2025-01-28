@@ -1,5 +1,6 @@
 import os
 import json
+import random
 import tkinter as tk
 from tkinter import ttk
 
@@ -38,6 +39,7 @@ class Unit:
         self.weapons = [Weapon(**weapon) for weapon in weapons]
         self.loadouts = [Loadout(**loadout) for loadout in loadouts]
         self.default_squad = SquadConfig(**default_squad)
+        self.selected_weapon = []
 
 class Weapon:
     def __init__(self, name, attacks, skill, range_, type_, strength, ap, damage, quantity=1):
@@ -86,6 +88,16 @@ class SquadConfig:
         return f"Default squad of {self.models} models, using {self.loadout}, allowed sizes: {self.sizes}"
 
 #Functions
+
+def roll_d6(qty=1):
+    if qty == 1:
+        return random.randint(1, 6)
+    return [random.randint(1,6) for _ in range(qty)]
+
+def roll_d3(qty=1):
+    if qty == 1:
+        return random.randint(1,3)
+    return [random.randint(1,3) for _ in range(qty)]
 
 def load_factions(folder_path):
     factions = {}
@@ -161,14 +173,55 @@ def get_blast(target_squad):
         return 0
     return len(target_squad) // 5
 
-def twin_linked():
+def get_weapon_stats(unit, weapon_name):
+    for weapon in unit.weapons:
+        if weapon.name == weapon_name:
+            return weapon
+    return None
+
+def get_loadout(unit, loadout_name):
+    for loadout in unit.loadouts:
+        if loadout.name == loadout_name:
+            return loadout
+    return None  
+
+def select_ranged(unit, range):
     pass
 
-def sustained_hits():
+def select_melee(unit):
     pass
 
-def lethal_hits():
-    pass
+def twin_linked(wound_rolls, goal):
+    result = []
+    for roll in wound_rolls:
+        if roll >= goal:
+            result.append(roll)
+        else:
+            result.append(roll_d6())
+    return result
+    
+
+def sustained_hits(shots, keyword, crit=6):
+    kw_split = keyword.split()
+    sustained = 0
+    if kw_split[2].isdigit():
+        value = int(kw_split[2])
+        for hit in shots:
+            if hit == crit:
+                sustained += value
+    else:
+        if kw_split[2] == "d3":
+            for hit in shots:
+                if hit == crit:
+                    sustained += roll_d3()
+    return sustained
+
+def lethal_hits(shots, crit=6):
+    lethal = 0
+    for hit in shots:
+        if hit == crit:
+            lethal += 1
+    return lethal
 
 def dev_wounds():
     pass
