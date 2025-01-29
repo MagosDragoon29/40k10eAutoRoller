@@ -223,6 +223,20 @@ def on_defender_size_change(*args):
             rebuild_squad(d_squad, size ,factions[faction_name].get_unit(unit_name).default_squad.loadout, defender_frames, defender_loadout_frame, factions[faction_name].get_unit(unit_name), alignment="w", column=1)
     except (ValueError, KeyError):
         pass
+def melta_damage(weapon, range):
+    if range < (weapon.range // 2):
+        melta_kw = [kw for kw in weapon.type if "Melta" in kw]
+        if melta_kw:
+            kw_list = melta_kw[0].split()
+            melta_val = int(kw_list[1])
+            return melta_val + weapon.damage
+        return weapon.damage
+    
+
+def shooting_phase(attacker_squad, target_squad):
+    #Overall Button Function for the Shooting Phase
+    # ADD A .SELECTED_WEAPONS TO UNIT CLASS
+    pass
 
 def reset_all():
     a_selected_faction.set("")

@@ -229,5 +229,12 @@ def dev_wounds():
 def weapon_keywords():
     pass
 
-
+def melta_damage(weapon, range):
+    if range < (weapon.range // 2):
+        melta_kw = [kw for kw in weapon.type if "Melta" in kw]
+        if melta_kw:
+            kw_list = melta_kw[0].split()
+            melta_val = int(kw_list[1])
+            return melta_val + weapon.damage
+        return weapon.damage
 
