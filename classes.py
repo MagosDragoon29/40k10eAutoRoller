@@ -223,8 +223,26 @@ def lethal_hits(shots, crit=6):
             lethal += 1
     return lethal
 
-def dev_wounds():
-    pass
+def dev_wounds(weapon, rolls):
+    mortal_wounds = []
+    for dice in rolls:
+        if dice == 6:
+            if isinstance(weapon.damage, int) or weapon.damage.isdigit():
+                mortal_wounds.append(int(weapon.damage))
+            elif isinstance(weapon.damage, str) and 'D' in weapon.damage.upper():
+                dam_split = weapon.damage.upper().split("+")
+                mod = int(dam_split[1]) if len(dam_split) > 1 else 0
+                dice_count = dam_split[0].split('D')
+                num_dice = int(dice_count[0]) if dice_count[0] else 1
+                dice_type = int(dice_count[1])
+                if dice_type == 3:
+                    dam_roll = sum(roll_d3(num_dice)) + mod
+                elif dice_type == 6:
+                    dam_roll = sum(roll_d6(num_dice)) + mod
+                else:
+                    raise ValueError(f"Unsupported dice type: d{dice_type}")
+                mortal_wounds.append(dam_roll)
+    return mortal_wounds
 
 def weapon_keywords():
     pass
@@ -238,3 +256,14 @@ def melta_damage(weapon, range):
             return melta_val + weapon.damage
         return weapon.damage
 
+def torrent(weapon):
+    attacks = weapon.attacks
+    if "+" in attacks:
+        mod_split = attacks.split("+")
+        base_part = mod_split[0]
+        mod = int(mod_split[1])
+    else:
+        base_part = attacks
+        mod = 0
+    dice_count = int(base_part[0])
+    return sum(roll_d6(dice_count)) + mod
