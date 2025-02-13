@@ -185,6 +185,12 @@ def get_loadout(unit, loadout_name):
             return loadout
     return None  
 
+def build_full_loadout(unit_name, faction, loadout_name):
+    unit = faction.get_unit(unit_name)
+    loadout = get_loadout(unit, loadout_name)
+    loadout.weapons = [get_weapon_stats(unit, weapon) for weapon in loadout.weapons]
+    return loadout
+
 def select_ranged(unit, range):
     pass
 
@@ -267,3 +273,59 @@ def torrent(weapon):
         mod = 0
     dice_count = int(base_part[0])
     return sum(roll_d6(dice_count)) + mod
+
+def detect_hits(rolls, skill):
+    if not hits:
+        return
+    hits = []
+    for roll in rolls: 
+        if roll >= skill:
+            hits.append(roll)
+    return hits
+
+def detect_wounds(rolls, weapon, target):
+    if not rolls or weapon is None or target is None:
+        return
+    wounds = []
+    if weapon.strength >= (2 * target.toughness):
+        for roll in rolls:
+            if roll >= 2:
+                wounds.append(roll)
+    elif weapon.strength > target.toughness:
+        for roll in rolls:
+            if roll >= 3:
+                wounds.append(roll)
+    elif weapon.strength == target.toughness:
+        for roll in rolls:
+            if roll >= 4:
+                wounds.append(roll)
+    elif weapon.strength * 2 <= target.toughness:
+        for roll in rolls: 
+            if roll >= 6:
+                wounds.append(roll)
+    else:
+        for roll in rolls:
+            if roll >= 5:
+                wounds.append(roll)
+    return wounds
+
+def calculate_damage(wounds, weapon):
+    damage = []
+    for _ in wounds:
+        if isinstance(weapon.damage, int) or weapon.damage.isdigit():
+            damage.append(int(weapon.damage))
+        elif isinstance(weapon.damage, str) and 'D' in weapon.damage.upper():
+            dam_split = weapon.damage.upper().split("+")
+            mod = int(dam_split[1]) if len(dam_split) > 1 else 0
+            dice_split = dam_split[0].split('D')
+            num_dice = int(dice_split[0]) if dice_split[0] else 1
+            dice_type = int(dice_split[1])
+            if dice_type == 3:
+                dam_roll = sum(roll_d3(num_dice)) + mod
+            elif dice_type == 6:
+                dam_roll = sum(roll_d6(num_dice)) + mod
+            else:
+                raise ValueError(f"Unsupported dice type: d{dice_type}")
+            damage.append(dam_roll)
+    return damage
+
