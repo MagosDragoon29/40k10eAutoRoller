@@ -47,7 +47,7 @@ class Weapon:
         self.attacks = attacks
         self.skill = skill
         self.range = range_
-        self.type = type_
+        self.keyords = type_
         self.strength = strength
         self.ap = ap
         self.damage = damage
@@ -191,11 +191,40 @@ def build_full_loadout(unit_name, faction, loadout_name):
     loadout.weapons = [get_weapon_stats(unit, weapon) for weapon in loadout.weapons]
     return loadout
 
-def select_ranged(unit, range):
-    pass
+def select_ranged(range, loadout):
+    raw, pistols, non, valid = [], [], [], []
+    for weapon in loadout.weapons:
+        if weapon.range == 0:
+            continue
+        elif weapon.range >= range:
+            raw.append(weapon)
+    pistols = [weapon for weapon in raw if "Pistol" in weapon.keywords]
+    non = [weapon for weapon in raw if "Pistol" not in weapon.keywords]
+    if range == 0 and pistols:
+        return pistols.copy()
+    elif range == 0 and not pistols:
+        return None
+    if non and range > 0:
+        valid = non.copy()
+    if not valid and pistols:
+        valid = pistols.copy()
+    return valid if valid else None
 
-def select_melee(unit):
-    pass
+def select_melee(loadout, range):
+    if range > 0:
+        return None
+    valid, extra = [], []
+    melee = [weapon for weapon in loadout.weapons if weapon.range == 0]
+    if len(melee) == 1: 
+        return melee
+    for weapon in melee:
+        if "Extra Attacks" in weapon.keywords:
+            extra.append(weapon)
+        elif not valid:
+            valid.append(weapon)
+        elif int(weapon.attacks) > int(valid[0].attacks):
+            valid[0] = weapon
+    return valid + extra if valid else None
 
 def twin_linked(wound_rolls, goal):
     result = []
@@ -255,7 +284,7 @@ def weapon_keywords():
 
 def melta_damage(weapon, range):
     if range < (weapon.range // 2):
-        melta_kw = [kw for kw in weapon.type if "Melta" in kw]
+        melta_kw = [kw for kw in weapon.keywords if "Melta" in kw]
         if melta_kw:
             kw_list = melta_kw[0].split()
             melta_val = int(kw_list[1])
