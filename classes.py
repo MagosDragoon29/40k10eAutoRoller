@@ -41,6 +41,9 @@ class Unit:
         self.default_squad = SquadConfig(**default_squad)
         self.selected_weapon = []
 
+    def clear_selected(self):
+        self.selected_weapon.clear()
+
 class Weapon:
     def __init__(self, name, attacks, skill, range_, type_, strength, ap, damage, quantity=1):
         self.name = name
@@ -358,3 +361,25 @@ def calculate_damage(wounds, weapon):
             damage.append(dam_roll)
     return damage
 
+def save(attacks, weapon, defender):
+    final_attacks = []
+    if defender.invuln and defender.invuln < (defender.save + weapon.ap):
+            effective_save = defender.invuln
+    else:
+            effective_save = defender.save + weapon.ap
+    for attack in attacks:
+        defense = roll_d6()
+        if defense < effective_save:
+            final_attacks.append(attack)
+    return final_attacks
+
+def feel_no_pain(dam_list, FNP):
+    final_damage = []
+    for damage in dam_list:
+        dam_val = damage
+        for _ in range(damage):
+            if roll_d6() >= FNP:
+                dam_val = max(0, dam_val - 1)
+        if dam_val > 0:
+            final_damage.append(dam_val)
+    return final_damage
