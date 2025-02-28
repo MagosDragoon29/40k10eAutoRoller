@@ -224,12 +224,31 @@ def on_defender_size_change(*args):
     except (ValueError, KeyError):
         pass
 
+def get_faction_data(faction_name):
+    faction = factions.get(faction_name)
+    if faction:
+        return faction
+    raise ValueError(f"Faction '{faction_name}' not found in faction folder")
+
 def shooting_phase(attacker_squad, target_squad):
     #Overall Button Function for the Shooting Phase
-    #steps
-    #1: get_blast
+    #1: get_blast and define needed things
+    blast = get_blast(target_squad)
+    a_faction, d_faction = get_faction_data(a_selected_faction.get()), get_faction_data(d_selected_faction.get())
+    a_unit, d_unit, range_val = a_selected_unit.get(), d_selected_unit.get(), int(range_var.get())
+    real_attackers, real_defenders = [], []
+
     #2: make dictionaries for each squad containing model id, unit data, loadout data
+    for i in range(len(attacker_squad)):
+        new_a_data = convert_data(attacker_squad[i]['model_id'], a_faction.get_unit(a_unit), build_full_loadout(a_unit, a_faction, attacker_squad[i]['loadout']))
+        real_attackers.append(new_a_data)
+    for j in range(len(target_squad)):
+        new_d_data = convert_data(target_squad[j]['model_id'], d_faction.get_unit(d_unit), build_full_loadout(d_unit, d_faction, target_squad[j]['loadout']))
+        real_defenders.append(new_d_data)
+    
     #3: for each attacking unit select_ranged
+    for attacker in real_attackers:
+        attacker['unit'].selected_weapon = select_ranged(range_val, attacker['loadout'])
     #4: for each attacker: roll hits, check sustained + lethal, roll wounds, apply twin-linked, apply dev_wounds, apply lethal
     pass
 
