@@ -86,6 +86,9 @@ d_squad_size_var = tk.StringVar(value="1")
 d_max_size = 10 #replace later
 
 range_var = tk.StringVar(value="0")
+attacker_moved = tk.BooleanVar(value=False)
+defender_in_cover = tk.BooleanVar(value=False)
+indirect_fire = tk.BooleanVar(value=False)
 
 ##attacker 
 a_size_label = ttk.Label(squad_size_frame, text="Attacker Squad Size:")
@@ -233,10 +236,11 @@ def get_faction_data(faction_name):
 def shooting_phase(attacker_squad, target_squad):
     #Overall Button Function for the Shooting Phase
     #1: get_blast and define needed things
-    blast = get_blast(target_squad)
+    blast, moved, in_cover, was_indirect = get_blast(target_squad), attacker_moved.get(), defender_in_cover.get(), indirect_fire.get()
     a_faction, d_faction = get_faction_data(a_selected_faction.get()), get_faction_data(d_selected_faction.get())
     a_unit, d_unit, range_val = a_selected_unit.get(), d_selected_unit.get(), int(range_var.get())
     real_attackers, real_defenders = [], []
+    model_rolls = {}
 
     #2: make dictionaries for each squad containing model id, unit data, loadout data
     for i in range(len(attacker_squad)):
@@ -245,11 +249,30 @@ def shooting_phase(attacker_squad, target_squad):
     for j in range(len(target_squad)):
         new_d_data = convert_data(target_squad[j]['model_id'], d_faction.get_unit(d_unit), build_full_loadout(d_unit, d_faction, target_squad[j]['loadout']))
         real_defenders.append(new_d_data)
-    
+    stealthed = any("Stealth" in model["unit"].keywords for model in new_d_data)
+
     #3: for each attacking unit select_ranged
     for attacker in real_attackers:
         attacker['unit'].selected_weapon = select_ranged(range_val, attacker['loadout'])
-    #4: for each attacker: roll hits, check sustained + lethal, roll wounds, apply twin-linked, apply dev_wounds, apply lethal
+
+    #4: for each attacker: process their attacks (hit, wound, damage, keywords)
+    ## Hits KW's: Sustained, Blast, Conversion, Extra Hits, Lethal, Rapid Fire
+    ## Wounds KW's: Devastating, Twin-Linked, Anti-, 
+    ## Damage Kw's: Melta
+    ## Save KW's: Cover, Ignores Cover
+    for attacker in real_attackers:
+        hits, wounds, damage = {}, {}, {}
+        if attacker['unit'].selected_weapon:
+            for weapon in attacker['unit'].selected_weapon:
+                num_attacks = int(weapon.attacks) if str(weapon.attacks).isdigit() else parse_dice(weapon.attacks)
+                if "Torrent" in weapon.keywords:
+                    hits[weapon.name] = [6] * num_attacks
+                else:
+                    hits[weapon.name] = detect_hits(roll_d6(num_attacks), weapon.skill, weapon, moved, was_indirect, stealthed)
+                
+                attacker['hits'] = hits
+
+
     pass
 
 def reset_all():
@@ -267,6 +290,12 @@ def reset_all():
 button_frame = ttk.Frame(main_frame, padding="5")
 button_frame.grid(row=5, column=0, columnspan=3, sticky="ew")
 
+move_checkbox = ttk.Checkbutton(button_frame, text="Attacker Moved?", variable=attacker_moved)
+move_checkbox.grid(row=0, column=0, sticky="w", pady=5)
+
+indirect_checkbox = ttk.Checkbutton(button_frame, text="Indirect Shot?", variable=indirect_fire)
+indirect_checkbox.grid(row=1, column=0, sticky="w", pady=5)
+
 reset_button = ttk.Button(button_frame, text="Reset All", command=reset_all)
 reset_button.grid(row=0, column=1, padx=5)
 
@@ -275,6 +304,9 @@ range_label.grid(row=0, column=2, sticky="e", padx=5)
 
 range_entry = ttk.Entry(button_frame, textvariable=range_var, width=10, justify="center")
 range_entry.grid(row=0, column=3, sticky="w", padx=5)
+
+cover_checkbox = ttk.Checkbutton(button_frame, text="Defender in Cover?", variable=defender_in_cover)
+cover_checkbox.grid(row=0, column=4, sticky="w", padx=5)
 
 button_frame.grid_columnconfigure(0, weight=1)
 button_frame.grid_columnconfigure(1, weight=1)

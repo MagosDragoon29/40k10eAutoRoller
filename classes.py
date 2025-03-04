@@ -152,11 +152,11 @@ def update_model_loadouts(squad, frames, loadout_frame, unit, alignment="left", 
         dropdown.bind("<<ComboboxSelected>>", lambda event, m=model, var=selected_loadout: set_model_loadout(m, var.get()))
 
 def squad_append(squad, default):
-    #planned update to squad inc to not reset squad to default loadouts
+    #planned update to squad inc to not reset squad to default loadouts, not yet implemented, do not use
     pass
 
 def squad_pop(squad, qty=1):
-    #planned update to squadn dec to not reset squad to default loadouts
+    #planned update to squadn dec to not reset squad to default loadouts, not yet implemented, do not use
     pass
 
 def update_squad_size(squad_var, delta, max_size):
@@ -187,6 +187,9 @@ def get_loadout(unit, loadout_name):
         if loadout.name == loadout_name:
             return loadout
     return None  
+
+def convert_data(id, unit, loadout):
+    return {"id": id, "unit": unit, "loadout": loadout}
 
 def build_full_loadout(unit_name, faction, loadout_name):
     unit = faction.get_unit(unit_name)
@@ -282,7 +285,7 @@ def dev_wounds(weapon, rolls):
                 mortal_wounds.append(dam_roll)
     return mortal_wounds
 
-def weapon_keywords():
+def extract_weapon_keywords(weapon):
     pass
 
 def melta_damage(weapon, range):
@@ -306,14 +309,18 @@ def torrent(weapon):
     dice_count = int(base_part[0])
     return sum(roll_d6(dice_count)) + mod
 
-def detect_hits(rolls, skill):
-    if not hits:
-        return
-    hits = []
-    for roll in rolls: 
-        if roll >= skill:
-            hits.append(roll)
-    return hits
+def detect_hits(rolls, skill, weapon, moved, was_indirect, stealth):
+    if not rolls:
+        return []
+    hit_threshold = skill
+    if "Heavy" in weapon.keywords and not moved:
+        hit_threshold = max(2, hit_threshold - 1)
+    if "Indirect" in weapon.keywords and was_indirect:
+        hit_threshold = max(4, hit_threshold + 1)
+    if stealth and not ("Indirect" in weapon.keywords and was_indirect):
+        hit_threshold += 1
+#make seperate helper function for melee????? this one is loaded with ranged keywords and im not sure i want to add more....
+    return [roll for roll in rolls if roll >= hit_threshold]
 
 def detect_wounds(rolls, weapon, target):
     if not rolls or weapon is None or target is None:
@@ -383,3 +390,29 @@ def feel_no_pain(dam_list, FNP):
         if dam_val > 0:
             final_damage.append(dam_val)
     return final_damage
+
+def parse_dice(value):
+    value = value.upper()
+    if value.isdigit():
+        return int(value)
+    
+    if 'D' in value:
+        parts = value.spliut('D')
+        num_dice = int(parts[0]) if parts[0] else 1
+
+        if '+' in parts[1]:
+            dice_part, modifier = parts[1].split('+')
+            modifier = int(modifier)
+        else:
+            dice_part, modifier = parts[1], 0
+        
+        dice_type = int(dice_part)
+
+        if dice_type == 6:
+            return sum(roll_d6(num_dice)) + modifier
+        elif dice_type == 3: 
+            return sum(roll_d3(num_dice)) + modifier
+        else:
+            raise ValueError(f"Unsupported dice type: d{dice_type}")
+    
+    raise ValueError(f"Invalid dice notation: {value}")
