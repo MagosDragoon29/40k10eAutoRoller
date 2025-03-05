@@ -257,6 +257,7 @@ def shooting_phase(attacker_squad, target_squad):
 
     #4: for each attacker: process their attacks (hit, wound, damage, keywords)
     ## Hits KW's: Sustained, Blast, Conversion, Extra Hits, Lethal, Rapid Fire
+        ## possible Sustained fix? if "Sustained" in kw.split(" ") for kw in weapon.keywords:
     ## Wounds KW's: Devastating, Twin-Linked, Anti-, 
     ## Damage Kw's: Melta
     ## Save KW's: Cover, Ignores Cover
@@ -269,8 +270,19 @@ def shooting_phase(attacker_squad, target_squad):
                     hits[weapon.name] = [6] * num_attacks
                 else:
                     hits[weapon.name] = detect_hits(roll_d6(num_attacks), weapon.skill, weapon, moved, was_indirect, stealthed)
-                
+                if "Conversion" in weapon.keywords:
+                    if range_val > 12:
+                        crit = 4
+                    else:
+                        crit = 6
+                else:
+                    crit = 6
                 attacker['hits'] = hits
+                if any(kw.startswith("Sustained Hits") for kw in weapon.keywords):
+                    sustained_kw = next((kw for kw in weapon.keywords if kw.startswith("Sustained Hits")), None)
+                    sus_hits = sustained_hits(hits[weapon.name], sustained_kw, crit)
+                    hits[weapon.name].extend([1] * sus_hits)
+
 
 
     pass
