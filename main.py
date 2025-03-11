@@ -256,7 +256,7 @@ def shooting_phase(attacker_squad, target_squad):
         attacker['unit'].selected_weapon = select_ranged(range_val, attacker['loadout'])
 
     #4: for each attacker: process their attacks (hit, wound, damage, keywords)
-    ## Hits KW's: Sustained, Blast, Conversion, Extra Hits, Lethal, Rapid Fire
+    ## Hits KW's: Lethal
         ## possible Sustained fix? if "Sustained" in kw.split(" ") for kw in weapon.keywords:
     ## Wounds KW's: Devastating, Twin-Linked, Anti-, 
     ## Damage Kw's: Melta
@@ -266,6 +266,18 @@ def shooting_phase(attacker_squad, target_squad):
         if attacker['unit'].selected_weapon:
             for weapon in attacker['unit'].selected_weapon:
                 num_attacks = int(weapon.attacks) if str(weapon.attacks).isdigit() else parse_dice(weapon.attacks)
+                if any(kw.startswith("Rapid Fire") for kw in weapon.keywords) and range_val <= (weapon.range /2):
+                    rf_kw = next((kw for kw in weapon.keywords if kw.startswith("Rapid Fire")), None)
+                    rf_val = 0
+                    if rf_kw:
+                        rf_parts = rf_kw.split(" ")
+                        if len(rf_parts) > 2:
+                            rf_val = parse_dice(rf_parts[2])
+                    num_attacks += rf_val
+                
+                if "Blast" in weapon.keywords:
+                    num_attacks += blast
+
                 if "Torrent" in weapon.keywords:
                     hits[weapon.name] = [6] * num_attacks
                 else:
@@ -282,6 +294,10 @@ def shooting_phase(attacker_squad, target_squad):
                     sustained_kw = next((kw for kw in weapon.keywords if kw.startswith("Sustained Hits")), None)
                     sus_hits = sustained_hits(hits[weapon.name], sustained_kw, crit)
                     hits[weapon.name].extend([1] * sus_hits)
+                
+                lethal_hits_val = 0
+                if "Lethal Hits" in weapon.keywords:
+                    lethal_hits_val = lethal_hits(hits[weapon.name])
 
 
 

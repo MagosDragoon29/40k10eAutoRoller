@@ -102,6 +102,32 @@ def roll_d3(qty=1):
         return random.randint(1,3)
     return [random.randint(1,3) for _ in range(qty)]
 
+def parse_dice(value):
+    value = value.upper()
+    if value.isdigit():
+        return int(value)
+    
+    if 'D' in value:
+        parts = value.spliut('D')
+        num_dice = int(parts[0]) if parts[0] else 1
+
+        if '+' in parts[1]:
+            dice_part, modifier = parts[1].split('+')
+            modifier = int(modifier)
+        else:
+            dice_part, modifier = parts[1], 0
+        
+        dice_type = int(dice_part)
+
+        if dice_type == 6:
+            return sum(roll_d6(num_dice)) + modifier
+        elif dice_type == 3: 
+            return sum(roll_d3(num_dice)) + modifier
+        else:
+            raise ValueError(f"Unsupported dice type: d{dice_type}")
+    
+    raise ValueError(f"Invalid dice notation: {value}")
+
 def load_factions(folder_path):
     factions = {}
     for faction_name in os.listdir(folder_path):
@@ -391,28 +417,3 @@ def feel_no_pain(dam_list, FNP):
             final_damage.append(dam_val)
     return final_damage
 
-def parse_dice(value):
-    value = value.upper()
-    if value.isdigit():
-        return int(value)
-    
-    if 'D' in value:
-        parts = value.spliut('D')
-        num_dice = int(parts[0]) if parts[0] else 1
-
-        if '+' in parts[1]:
-            dice_part, modifier = parts[1].split('+')
-            modifier = int(modifier)
-        else:
-            dice_part, modifier = parts[1], 0
-        
-        dice_type = int(dice_part)
-
-        if dice_type == 6:
-            return sum(roll_d6(num_dice)) + modifier
-        elif dice_type == 3: 
-            return sum(roll_d3(num_dice)) + modifier
-        else:
-            raise ValueError(f"Unsupported dice type: d{dice_type}")
-    
-    raise ValueError(f"Invalid dice notation: {value}")
