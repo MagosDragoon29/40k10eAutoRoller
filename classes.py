@@ -258,10 +258,24 @@ def select_melee(loadout, range):
             valid[0] = weapon
     return valid + extra if valid else None
 
-def twin_linked(wound_rolls, goal):
+def determine_wound_threshold(weapon, target):
+    if weapon.strength >= (2 * target.toughness):
+        return 2  # Wound on 2+
+    elif weapon.strength > target.toughness:
+        return 3  # Wound on 3+
+    elif weapon.strength == target.toughness:
+        return 4  # Wound on 4+
+    elif weapon.strength < target.toughness:
+        return 5  # Wound on 5+
+    else:
+        return 6  # Wound on 6+ (S is half or less of T)
+
+
+
+def twin_linked(wound_rolls, goal, crit):
     result = []
     for roll in wound_rolls:
-        if roll >= goal:
+        if roll >= goal or roll >= crit:
             result.append(roll)
         else:
             result.append(roll_d6())
@@ -290,10 +304,12 @@ def lethal_hits(shots, crit=6):
             lethal += 1
     return lethal
 
-def dev_wounds(weapon, rolls):
+def dev_wounds(weapon, rolls, crit):
     mortal_wounds = []
+    if not rolls:
+        return []
     for dice in rolls:
-        if dice == 6:
+        if dice == 6 or dice >= crit:
             if isinstance(weapon.damage, int) or weapon.damage.isdigit():
                 mortal_wounds.append(int(weapon.damage))
             elif isinstance(weapon.damage, str) and 'D' in weapon.damage.upper():
@@ -348,31 +364,14 @@ def detect_hits(rolls, skill, weapon, moved, was_indirect, stealth):
 #make seperate helper function for melee????? this one is loaded with ranged keywords and im not sure i want to add more....
     return [roll for roll in rolls if roll >= hit_threshold]
 
-def detect_wounds(rolls, weapon, target):
-    if not rolls or weapon is None or target is None:
-        return
-    wounds = []
-    if weapon.strength >= (2 * target.toughness):
-        for roll in rolls:
-            if roll >= 2:
-                wounds.append(roll)
-    elif weapon.strength > target.toughness:
-        for roll in rolls:
-            if roll >= 3:
-                wounds.append(roll)
-    elif weapon.strength == target.toughness:
-        for roll in rolls:
-            if roll >= 4:
-                wounds.append(roll)
-    elif weapon.strength * 2 <= target.toughness:
-        for roll in rolls: 
-            if roll >= 6:
-                wounds.append(roll)
-    else:
-        for roll in rolls:
-            if roll >= 5:
-                wounds.append(roll)
-    return wounds
+def detect_wounds(rolls, threshold, crit):
+    if not rolls or not threshold or not crit:
+        raise ValueError("something wasn't provided to detect_wounds")
+    result = []
+    for roll in rolls: 
+        if roll >= threshold or roll >= crit: 
+            result.append(roll)
+    return result
 
 def calculate_damage(wounds, weapon):
     damage = []

@@ -249,6 +249,12 @@ def shooting_phase(attacker_squad, target_squad):
     for j in range(len(target_squad)):
         new_d_data = convert_data(target_squad[j]['model_id'], d_faction.get_unit(d_unit), build_full_loadout(d_unit, d_faction, target_squad[j]['loadout']))
         real_defenders.append(new_d_data)
+    if not real_attackers:
+        print("Warning: No attacking unit found, skipping Shooting Phase.")
+        return
+    if not real_defenders:
+        print("Warning: No defending unit found, skipping Shooting Phase.")
+        return
     stealthed = any("Stealth" in model["unit"].keywords for model in new_d_data)
 
     #3: for each attacking unit select_ranged
@@ -256,15 +262,13 @@ def shooting_phase(attacker_squad, target_squad):
         attacker['unit'].selected_weapon = select_ranged(range_val, attacker['loadout'])
 
     #4: for each attacker: process their attacks (hit, wound, damage, keywords)
-    ## Hits KW's: Lethal
-        ## possible Sustained fix? if "Sustained" in kw.split(" ") for kw in weapon.keywords:
-    ## Wounds KW's: Devastating, Twin-Linked, Anti-, 
     ## Damage Kw's: Melta
     ## Save KW's: Cover, Ignores Cover
     for attacker in real_attackers:
         hits, wounds, damage = {}, {}, {}
         if attacker['unit'].selected_weapon:
             for weapon in attacker['unit'].selected_weapon:
+                # Hit Roll Phase
                 num_attacks = int(weapon.attacks) if str(weapon.attacks).isdigit() else parse_dice(weapon.attacks)
                 if any(kw.startswith("Rapid Fire") for kw in weapon.keywords) and range_val <= (weapon.range /2):
                     rf_kw = next((kw for kw in weapon.keywords if kw.startswith("Rapid Fire")), None)
@@ -298,6 +302,35 @@ def shooting_phase(attacker_squad, target_squad):
                 lethal_hits_val = 0
                 if "Lethal Hits" in weapon.keywords:
                     lethal_hits_val = lethal_hits(hits[weapon.name])
+                
+                # Wound Roll Phase
+                crit_wound = 6
+                wound_threshold = determine_wound_threshold(weapon, new_d_data[0]["unit"])
+                ## Anti-
+                if any(kw.startswith("Anti-") for kw in weapon.keywords):
+                    anti_kw = next((kw for kw in weapon.keywords if kw.startswith("Anti-")), None)
+                    if anti_kw:
+                        anti_parts = anti_kw.split(" ")
+                        anti_type = anti_parts[0].split("-")[1]
+                        anti_val = int(anti_parts[1])
+                        if any(anti_type in model["unit"].keywords for model in new_d_data):
+                            crit_wound = anti_val
+                    
+                ## Roll Wounds
+                num_wound_rolls = len(hits[weapon.name])
+                if num_wound_rolls > 0:
+                    if "Twin-Linked" in weapon.keywords:
+                        wound_rolls = detect_wounds(twin_linked(roll_d6(num_wound_rolls),wound_threshold, crit_wound),wound_threshold, crit_wound)
+                    else:
+                        wound_rolls = detect_wounds(roll_d6(num_wound_rolls), wound_threshold, crit_wound)
+                else:
+                    wound_rolls = []
+                if lethal_hits_val:
+                    wound_rolls.extend([1] * lethal_hits_val)
+                
+                if "Devastating Wounds" in weapon.keywords:
+                    mortals = dev_wounds(weapon, wound_rolls, crit)
+                
 
 
 
