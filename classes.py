@@ -393,12 +393,16 @@ def calculate_damage(wounds, weapon):
             damage.append(dam_roll)
     return damage
 
-def save(attacks, weapon, defender):
+def save(attacks, weapon, defender, cover):
     final_attacks = []
-    if defender.invuln and defender.invuln < (defender.save + weapon.ap):
+    if cover and ((defender.save > 3) or weapon.ap > 0):
+        cov_bonus = 1
+    else:
+        cov_bonus = 0
+    if defender.invuln and defender.invuln < (defender.save + weapon.ap - cov_bonus):
             effective_save = defender.invuln
     else:
-            effective_save = defender.save + weapon.ap
+            effective_save = (defender.save + weapon.ap) - cov_bonus
     for attack in attacks:
         defense = roll_d6()
         if defense < effective_save:

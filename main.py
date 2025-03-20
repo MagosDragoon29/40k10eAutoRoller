@@ -264,6 +264,7 @@ def shooting_phase(attacker_squad, target_squad):
     #4: for each attacker: process their attacks (hit, wound, damage, keywords)
     ## Damage Kw's: Melta
     ## Save KW's: Cover, Ignores Cover
+    ## HAZARDOUS
     for attacker in real_attackers:
         hits, wounds, damage = {}, {}, {}
         if attacker['unit'].selected_weapon:
@@ -330,10 +331,42 @@ def shooting_phase(attacker_squad, target_squad):
                 
                 if "Devastating Wounds" in weapon.keywords:
                     mortals = dev_wounds(weapon, wound_rolls, crit)
-                
+                wounds[weapon.name] = wound_rolls
 
+                ## Save Time
+                #if Dev Wounds: need to catch the crits already accounted for in Dev Wounds as one cannot save against Mortal Wounds
+                #otherwise roll save
+                dam_rolls = []
+                failed_saves = []
+                if "Devastating Wounds" in weapon.keywords:
+                    non_mw = []
+                    for roll in wound_rolls:
+                        if roll < crit:
+                            non_mw.append(roll)
+                    if "Ignores Cover" in weapon.keywords:
+                        failed_saves = save(non_mw, weapon, new_d_data[0]["unit"], False)
+                    else:
+                        failed_saves = save(non_mw, weapon, new_d_data[0]["unit"], in_cover)
+                else:
+                    if "Ignores Cover" in weapon.keywords:
+                        failed_saves = save(wound_rolls, weapon, new_d_data[0]["unit"], False)
+                    else:
+                        failed_saves = save(wound_rolls, weapon, new_d_data[0]["unit"], in_cover)
 
+                dam_rolls = calculate_damage(failed_saves, weapon)
 
+                if new_d_data[0]["unit"].fnp:
+                    damage[weapon.name] = feel_no_pain(dam_rolls, new_d_data[0]["unit"].fnp)
+
+                else:
+                    damage[weapon.name] = dam_rolls
+                    
+
+                #ignores cover keyword needs handled.
+                #roll damage, again needing to ignore Dev Wounds
+                #Roll FNP
+                #apply damage
+                #figure out reporting to the UI......
     pass
 
 def reset_all():
