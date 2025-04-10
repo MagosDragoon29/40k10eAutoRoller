@@ -89,6 +89,7 @@ range_var = tk.StringVar(value="0")
 attacker_moved = tk.BooleanVar(value=False)
 defender_in_cover = tk.BooleanVar(value=False)
 indirect_fire = tk.BooleanVar(value=False)
+charge_var = tk.BooleanVar(value=False)
 
 ##attacker 
 a_size_label = ttk.Label(squad_size_frame, text="Attacker Squad Size:")
@@ -233,6 +234,12 @@ def get_faction_data(faction_name):
         return faction
     raise ValueError(f"Faction '{faction_name}' not found in faction folder")
 
+def print_to_report(text):
+    report_text.configure(state="normal")
+    report_text.insert("end", text + "\n")
+    report_text.see("end")
+    report_text.configure(state="disabled")
+
 def shooting_phase(attacker_squad, target_squad):
     #Overall Button Function for the Shooting Phase
     #1: get_blast and define needed things
@@ -241,6 +248,9 @@ def shooting_phase(attacker_squad, target_squad):
     a_unit, d_unit, range_val = a_selected_unit.get(), d_selected_unit.get(), int(range_var.get())
     real_attackers, real_defenders = [], []
     model_rolls = {}
+    if range_val < 2:
+        print_to_report("Attacker is in Engagement Range!")
+        return
 
     #2: make dictionaries for each squad containing model id, unit data, loadout data
     for i in range(len(attacker_squad)):
@@ -255,17 +265,21 @@ def shooting_phase(attacker_squad, target_squad):
     if not real_defenders:
         print("Warning: No defending unit found, skipping Shooting Phase.")
         return
-    stealthed = any("Stealth" in model["unit"].keywords for model in new_d_data)
+    stealthed = any("Stealth" in model["unit"].keywords for model in real_defenders)
+    defender_unit = real_defenders[0]['unit']
 
     #3: for each attacking unit select_ranged
     for attacker in real_attackers:
         attacker['unit'].selected_weapon = select_ranged(range_val, attacker['loadout'])
+        print_to_report(f"{attacker['unit'].name} {attacker['id']} selected {[w.name for w in attacker['unit'].selected_weapon]} to shoot")
 
     #4: for each attacker: process their attacks (hit, wound, damage, keywords)
     ## Damage Kw's: Melta
     ## Save KW's: Cover, Ignores Cover
     ## HAZARDOUS
     for attacker in real_attackers:
+        print_to_report(f"---\nProcessing {attacker['unit'].name} ID {attacker['id']}")
+        print_to_report(f"Selected weapon(s): {[w.name for w in attacker['unit'].selected_weapon] if attacker['unit'].selected_weapon else 'None'}")
         hits, wounds, damage = {}, {}, {}
         if attacker['unit'].selected_weapon:
             for weapon in attacker['unit'].selected_weapon:
@@ -287,6 +301,7 @@ def shooting_phase(attacker_squad, target_squad):
                     hits[weapon.name] = [6] * num_attacks
                 else:
                     hits[weapon.name] = detect_hits(roll_d6(num_attacks), weapon.skill, weapon, moved, was_indirect, stealthed)
+                print_to_report(f"{attacker['unit'].name} {attacker['id']} attacks {num_attacks} with {weapon.name} and successfully hits {len(hits[weapon.name])} times")
                 if "Conversion" in weapon.keywords:
                     if range_val > 12:
                         crit = 4
@@ -299,6 +314,7 @@ def shooting_phase(attacker_squad, target_squad):
                     sustained_kw = next((kw for kw in weapon.keywords if kw.startswith("Sustained Hits")), None)
                     sus_hits = sustained_hits(hits[weapon.name], sustained_kw, crit)
                     hits[weapon.name].extend([1] * sus_hits)
+                    print_to_report(f"{sus_hits} added to successful from keyword: {sustained_kw}")
                 
                 lethal_hits_val = 0
                 if "Lethal Hits" in weapon.keywords:
@@ -306,7 +322,7 @@ def shooting_phase(attacker_squad, target_squad):
                 
                 # Wound Roll Phase
                 crit_wound = 6
-                wound_threshold = determine_wound_threshold(weapon, new_d_data[0]["unit"])
+                wound_threshold = determine_wound_threshold(weapon, defender_unit)
                 ## Anti-
                 if any(kw.startswith("Anti-") for kw in weapon.keywords):
                     anti_kw = next((kw for kw in weapon.keywords if kw.startswith("Anti-")), None)
@@ -317,6 +333,138 @@ def shooting_phase(attacker_squad, target_squad):
                         if any(anti_type in model["unit"].keywords for model in new_d_data):
                             crit_wound = anti_val
                     
+                ## Roll Wounds
+                num_wound_rolls = len(hits[weapon.name])
+                if num_wound_rolls > 0:
+                    if "Twin-Linked" in weapon.keywords:
+                        wound_rolls = detect_wounds(twin_linked(ensure_list(roll_d6(num_wound_rolls)),wound_threshold, crit_wound),wound_threshold, crit_wound)
+                    else:
+                        wound_rolls = detect_wounds(ensure_list(roll_d6(num_wound_rolls)), wound_threshold, crit_wound)
+                else:
+                    wound_rolls = []
+                print_to_report(f"{attacker['unit'].name} {attacker['id']} successfully wounded {defender_unit.name} {len(wound_rolls)} times")
+                if lethal_hits_val:
+                    wound_rolls.extend([1] * lethal_hits_val)
+                    print_to_report(f"{lethal_hits_val} hits automatically wounded via Lethal Hits")
+                
+                if "Devastating Wounds" in weapon.keywords:
+                    mortals = dev_wounds(weapon, wound_rolls, crit)
+                else:
+                    mortals = []
+                wounds[weapon.name] = wound_rolls
+
+                ## Save Time
+                #if Dev Wounds: need to catch the crits already accounted for in Dev Wounds as one cannot save against Mortal Wounds
+                #otherwise roll save
+                dam_rolls = []
+                failed_saves = []
+                if "Devastating Wounds" in weapon.keywords:
+                    non_mw = []
+                    for roll in wound_rolls:
+                        if roll < crit:
+                            non_mw.append(roll)
+                    if "Ignores Cover" in weapon.keywords:
+                        failed_saves = save(non_mw, weapon, defender_unit, False)
+                    else:
+                        failed_saves = save(non_mw, weapon, defender_unit, in_cover)
+                else:
+                    if "Ignores Cover" in weapon.keywords:
+                        failed_saves = save(wound_rolls, weapon, defender_unit, False)
+                    else:
+                        failed_saves = save(wound_rolls, weapon, defender_unit, in_cover)
+                print_to_report(f"{defender_unit.name} failed {len(failed_saves)} saves!")
+
+                dam_rolls = calculate_damage(failed_saves, weapon)
+                
+                if defender_unit.fnp:
+                    damage[weapon.name] = feel_no_pain(dam_rolls, defender_unit.fnp)
+                    if mortals:
+                        mortals = feel_no_pain(mortals, defender_unit.fnp)
+
+                else:
+                    damage[weapon.name] = dam_rolls
+                
+                print_to_report(f"{attacker['unit'].name} {attacker['id']} deals damage {len(damage[weapon.name])} times resulting in {damage[weapon.name]} damage!")
+                if mortals:
+                    print_to_report(f"{defender_unit.name} takes {sum(mortals)} Mortal Wounds!")
+
+                #ignores cover keyword needs handled.
+                #roll damage, again needing to ignore Dev Wounds
+                #Roll FNP
+                #apply damage
+                #figure out reporting to the UI......
+                if "Hazardous" in weapon.keywords:
+                    if roll_d6() == 1:
+                        print_to_report(f"{attacker['unit'].name} {attacker['id']} failed a Hazardous Test and takes 3 Mortal Wounds")
+                        
+        #attacker['unit'].selected_weapon.clear()
+
+def fight_phase(attacker_squad, target_squad):
+    #Overall Button Function for the Shooting Phase
+    #1: get_blast and define needed things
+    charge_bool  = charge_var.get()
+    a_faction, d_faction = get_faction_data(a_selected_faction.get()), get_faction_data(d_selected_faction.get())
+    a_unit, d_unit, range_val = a_selected_unit.get(), d_selected_unit.get(), int(range_var.get())
+    real_attackers, real_defenders = [], []
+    if range_val:
+        print("Attacker not in Melee")
+        return
+    #2: make dictionaries for each squad containing model id, unit data, loadout data
+    for i in range(len(attacker_squad)):
+        new_a_data = convert_data(attacker_squad[i]['model_id'], a_faction.get_unit(a_unit), build_full_loadout(a_unit, a_faction, attacker_squad[i]['loadout']))
+        real_attackers.append(new_a_data)
+    for j in range(len(target_squad)):
+        new_d_data = convert_data(target_squad[j]['model_id'], d_faction.get_unit(d_unit), build_full_loadout(d_unit, d_faction, target_squad[j]['loadout']))
+        real_defenders.append(new_d_data)
+    if not real_attackers:
+        print("Warning: No attacking unit found, skipping Fight Phase.")
+        return
+    if not real_defenders:
+        print("Warning: No defending unit found, skipping Fight Phase.")
+        return
+
+    #3: for each attacking unit select_ranged
+    for attacker in real_attackers:
+        attacker['unit'].selected_weapon = select_melee(range_val, attacker['loadout'])
+
+    #4: for each attacker: process their attacks (hit, wound, damage, keywords)
+    for attacker in real_attackers:
+        hits, wounds, damage = {}, {}, {}
+        if attacker['unit'].selected_weapon:
+            for weapon in attacker['unit'].selected_weapon:
+                # Hit Roll Step
+                num_attacks = int(weapon.attacks) if str(weapon.attacks).isdigit() else parse_dice(weapon.attacks)
+                crit = 6
+                hits[weapon.name] = detect_hits(roll_d6(num_attacks), weapon.skill, weapon, False, False, False)
+
+                if any(kw.startswith("Sustained Hits") for kw in weapon.keywords):
+                    sustained_kw = next((kw for kw in weapon.keywords if kw.startswith("Sustained Hits")), None)
+                    sus_hits = sustained_hits(hits[weapon.name], sustained_kw, crit)
+                    hits[weapon.name].extend([1] * sus_hits)
+                
+                lethal_hits_val = 0
+                if "Lethal Hits" in weapon.keywords:
+                    lethal_hits_val = lethal_hits(hits[weapon.name])
+                
+                attacker['hits'] = hits
+
+                # Wound Roll Step
+                crit_wound = 6
+                wound_threshold = determine_wound_threshold(weapon, new_d_data[0]["unit"])
+
+                if "Lance" in weapon.keywords and charge_bool:
+                    wound_threshold -= 1
+
+                ## Anti-
+                if any(kw.startswith("Anti-") for kw in weapon.keywords):
+                    anti_kw = next((kw for kw in weapon.keywords if kw.startswith("Anti-")), None)
+                    if anti_kw:
+                        anti_parts = anti_kw.split(" ")
+                        anti_type = anti_parts[0].split("-")[1]
+                        anti_val = int(anti_parts[1])
+                        if any(anti_type in model["unit"].keywords for model in new_d_data):
+                            crit_wound = anti_val
+
                 ## Roll Wounds
                 num_wound_rolls = len(hits[weapon.name])
                 if num_wound_rolls > 0:
@@ -333,9 +481,7 @@ def shooting_phase(attacker_squad, target_squad):
                     mortals = dev_wounds(weapon, wound_rolls, crit)
                 wounds[weapon.name] = wound_rolls
 
-                ## Save Time
-                #if Dev Wounds: need to catch the crits already accounted for in Dev Wounds as one cannot save against Mortal Wounds
-                #otherwise roll save
+                ## Defense and Damage Step
                 dam_rolls = []
                 failed_saves = []
                 if "Devastating Wounds" in weapon.keywords:
@@ -343,15 +489,9 @@ def shooting_phase(attacker_squad, target_squad):
                     for roll in wound_rolls:
                         if roll < crit:
                             non_mw.append(roll)
-                    if "Ignores Cover" in weapon.keywords:
-                        failed_saves = save(non_mw, weapon, new_d_data[0]["unit"], False)
-                    else:
-                        failed_saves = save(non_mw, weapon, new_d_data[0]["unit"], in_cover)
+                    failed_saves = save(non_mw, weapon, new_d_data[0]["unit"], False)
                 else:
-                    if "Ignores Cover" in weapon.keywords:
-                        failed_saves = save(wound_rolls, weapon, new_d_data[0]["unit"], False)
-                    else:
-                        failed_saves = save(wound_rolls, weapon, new_d_data[0]["unit"], in_cover)
+                    failed_saves = save(wound_rolls, weapon, new_d_data[0]["unit"], False)
 
                 dam_rolls = calculate_damage(failed_saves, weapon)
 
@@ -360,14 +500,8 @@ def shooting_phase(attacker_squad, target_squad):
 
                 else:
                     damage[weapon.name] = dam_rolls
-                    
-
-                #ignores cover keyword needs handled.
-                #roll damage, again needing to ignore Dev Wounds
-                #Roll FNP
-                #apply damage
-                #figure out reporting to the UI......
-    pass
+                
+        attacker['unit'].selected_weapon.clear()
 
 def reset_all():
     a_selected_faction.set("")
@@ -393,6 +527,9 @@ indirect_checkbox.grid(row=1, column=0, sticky="w", pady=5)
 reset_button = ttk.Button(button_frame, text="Reset All", command=reset_all)
 reset_button.grid(row=0, column=1, padx=5)
 
+shoot_button = ttk.Button(button_frame, text="Shooting Phase", command=lambda: shooting_phase(a_squad, d_squad))
+shoot_button.grid(row=1, column=1, padx=5)
+
 range_label = ttk.Label(button_frame, text="Range")
 range_label.grid(row=0, column=2, sticky="e", padx=5)
 
@@ -401,6 +538,9 @@ range_entry.grid(row=0, column=3, sticky="w", padx=5)
 
 cover_checkbox = ttk.Checkbutton(button_frame, text="Defender in Cover?", variable=defender_in_cover)
 cover_checkbox.grid(row=0, column=4, sticky="w", padx=5)
+
+charge_checkbox = ttk.Checkbutton(button_frame, text="Charged?", variable=charge_var)
+charge_checkbox.grid(row=2,column=0, sticky="w", pady=5)
 
 button_frame.grid_columnconfigure(0, weight=1)
 button_frame.grid_columnconfigure(1, weight=1)

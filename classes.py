@@ -25,7 +25,7 @@ class Faction:
         raise ValueError(f"unit '{unit_name}' not found in faction '{self.name}")
     
 class Unit:
-    def __init__(self, unit_name, keywords, movement, toughness, save, invuln, wounds, leadership, objective_control, abilities, weapons, loadouts, default_squad):
+    def __init__(self, unit_name, keywords, movement, toughness, save, invuln, wounds, leadership, objective_control, fnp, abilities, weapons, loadouts, default_squad):
         self.name = unit_name
         self.keywords = keywords
         self.movement = movement
@@ -35,6 +35,7 @@ class Unit:
         self.wounds = wounds
         self.leadership = leadership
         self.oc = objective_control
+        self.fnp = fnp
         self.abilities = abilities
         self.weapons = [Weapon(**weapon) for weapon in weapons]
         self.loadouts = [Loadout(**loadout) for loadout in loadouts]
@@ -50,7 +51,7 @@ class Weapon:
         self.attacks = attacks
         self.skill = skill
         self.range = range_
-        self.keyords = type_
+        self.keywords = type_
         self.strength = strength
         self.ap = ap
         self.damage = damage
@@ -93,14 +94,13 @@ class SquadConfig:
 #Functions
 
 def roll_d6(qty=1):
-    if qty == 1:
-        return random.randint(1, 6)
     return [random.randint(1,6) for _ in range(qty)]
 
 def roll_d3(qty=1):
-    if qty == 1:
-        return random.randint(1,3)
     return [random.randint(1,3) for _ in range(qty)]
+
+def ensure_list(val):
+    return val if isinstance(val, list) else [val]
 
 def parse_dice(value):
     value = value.upper()
@@ -108,7 +108,7 @@ def parse_dice(value):
         return int(value)
     
     if 'D' in value:
-        parts = value.spliut('D')
+        parts = value.split('D')
         num_dice = int(parts[0]) if parts[0] else 1
 
         if '+' in parts[1]:
@@ -120,9 +120,9 @@ def parse_dice(value):
         dice_type = int(dice_part)
 
         if dice_type == 6:
-            return sum(roll_d6(num_dice)) + modifier
+            return sum(ensure_list(roll_d6(num_dice))) + modifier
         elif dice_type == 3: 
-            return sum(roll_d3(num_dice)) + modifier
+            return sum(ensure_list(roll_d3(num_dice))) + modifier
         else:
             raise ValueError(f"Unsupported dice type: d{dice_type}")
     
@@ -203,6 +203,8 @@ def get_blast(target_squad):
     return len(target_squad) // 5
 
 def get_weapon_stats(unit, weapon_name):
+    if isinstance(weapon_name, Weapon):
+        return weapon_name
     for weapon in unit.weapons:
         if weapon.name == weapon_name:
             return weapon
@@ -220,7 +222,14 @@ def convert_data(id, unit, loadout):
 def build_full_loadout(unit_name, faction, loadout_name):
     unit = faction.get_unit(unit_name)
     loadout = get_loadout(unit, loadout_name)
-    loadout.weapons = [get_weapon_stats(unit, weapon) for weapon in loadout.weapons]
+    for i in range(len(loadout.weapons)):
+        weapon_ref = loadout.weapons[i]
+        if isinstance(weapon_ref, str):
+            weapon_obj = get_weapon_stats(unit, loadout.weapons[i])
+            if weapon_obj is None:
+                print(f"[ERROR] Could not find weapon stats for '{weapon_ref}' in unit '{unit.name}")
+            loadout.weapons[i] = weapon_obj
+       
     return loadout
 
 def select_ranged(range, loadout):
@@ -242,7 +251,7 @@ def select_ranged(range, loadout):
         valid = pistols.copy()
     return valid if valid else None
 
-def select_melee(loadout, range):
+def select_melee(range, loadout):
     if range > 0:
         return None
     valid, extra = [], []
@@ -405,7 +414,7 @@ def save(attacks, weapon, defender, cover):
             effective_save = (defender.save + weapon.ap) - cov_bonus
     for attack in attacks:
         defense = roll_d6()
-        if defense < effective_save:
+        if defense[0] < effective_save:
             final_attacks.append(attack)
     return final_attacks
 
