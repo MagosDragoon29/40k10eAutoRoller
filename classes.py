@@ -284,10 +284,13 @@ def determine_wound_threshold(weapon, target):
 def twin_linked(wound_rolls, goal, crit):
     result = []
     for roll in wound_rolls:
+        if isinstance(roll, list):
+            roll = roll[0]
         if roll >= goal or roll >= crit:
             result.append(roll)
         else:
-            result.append(roll_d6())
+            new_roll = roll_d6()[0]
+            result.append(new_roll)
     return result
     
 
