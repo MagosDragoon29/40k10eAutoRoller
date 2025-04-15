@@ -351,7 +351,7 @@ def shooting_phase(attacker_squad, target_squad):
                         wound_rolls = detect_wounds(ensure_list(roll_d6(num_wound_rolls)), wound_threshold, crit_wound)
                 else:
                     wound_rolls = []
-                print_to_report(f"{attacker['unit'].name} {attacker['id1']} successfully wounded {defender_unit.name} {len(wound_rolls)} times")
+                print_to_report(f"{attacker['unit'].name} {attacker['id']} successfully wounded {defender_unit.name} {len(wound_rolls)} times")
                 if lethal_hits_val:
                     wound_rolls.extend([1] * lethal_hits_val)
                     print_to_report(f"{lethal_hits_val} hits automatically wounded via Lethal Hits")
